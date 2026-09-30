@@ -52,11 +52,14 @@ def chunk_documents(docs: list[dict], size: int = 600, overlap: int = 80) -> lis
     chunks = []
     for doc in docs:
         words = doc["text"].split()
+        title = doc["source"].split(" > ")[-1]
         for i in range(0, len(words), size - overlap):
             window = words[i : i + size]
-            if len(window) < 40:
+            # Drop short trailing windows (already covered by the overlap), but
+            # always keep a short page's only chunk so it stays searchable.
+            if i > 0 and len(window) < 40:
                 continue
-            chunks.append({"text": " ".join(window), "source": doc["source"]})
+            chunks.append({"text": " ".join(window), "source": doc["source"], "title": title})
     return chunks
 
 
@@ -71,7 +74,10 @@ class RAGIndex:
         self.vectorizer = TfidfVectorizer(
             stop_words="english", max_features=15000, ngram_range=(1, 2)
         )
-        self.matrix = self.vectorizer.fit_transform(c["text"] for c in chunks)
+        # Index the page title with each chunk so pages can be found by name.
+        self.matrix = self.vectorizer.fit_transform(
+            f"{c['title']}\n{c['text']}" for c in chunks
+        )
 
     def search(self, query: str, k: int = 10) -> list[dict]:
         if not self.vectorizer:
