@@ -144,14 +144,21 @@ async def chat(req: ChatRequest):
 
     async def stream():
         try:
-            with _client.messages.stream(
-                model="claude-sonnet-4-6",
-                max_tokens=2048,
+            with _client.beta.messages.stream(
+                model="claude-sonnet-5-5",
+                # Thinking is on by default and counts toward max_tokens.
+                max_tokens=16000,
+                output_config={"effort": "low"},  # quick answers for chat
+                # If the model declines a request, retry it on a fallback model.
+                betas=["server-side-fallback-2026-07-01"],
+                fallbacks="default",
                 system=system,
                 messages=messages,
             ) as s:
                 for text in s.text_stream:
                     yield f"data: {json.dumps({'text': text})}\n\n"
+                if s.get_final_message().stop_reason == "refusal":
+                    yield f"data: {json.dumps({'error': 'The model declined to answer this request.'})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
         yield "data: [DONE]\n\n"
