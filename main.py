@@ -1,4 +1,3 @@
-import os
 import re
 import json
 from pathlib import Path
@@ -95,7 +94,9 @@ _index = RAGIndex(_chunks)
 print("  Ready.")
 
 app = FastAPI()
-_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# Resolves credentials automatically: ANTHROPIC_API_KEY if set, otherwise the
+# profile saved by `ant auth login`.
+_client = Anthropic()
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
